@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Visualize Data with a Scatterplot Graph</title>
+    <!--jQuery CDN-->
+    <script src="https://code.jquery.com/jquery-3.2.1.min.js"></script>
+    <!--D3 CDN-->
+    <script src="https://d3js.org/d3.v6.min.js"></script>
+    <link rel="shortcut icon" href="#" />
+    <!--GOOGLE FONTS-->
+    <link href="https://fonts.googleapis.com/css2?family=Roboto+Mono&display=swap" rel="stylesheet">
+    <!--FA-->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.12.1/css/all.min.css">
+    <style>
+        html {
+            scroll-behavior: smooth;
+        }
+        body {
+            margin: 0;
+            font-family: "Roboto Mono", monospace;
+        }
+        section {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            border: 0px solid black;
+        }
+        nav {
+            position: fixed;
+            top: 50%;
+            right: 0;
+            transform: translateY(-50%);
+            border: 0px solid black;
+        }
+        nav a {
+            border: 4px solid black;
+            border-radius: 50%;
+            display: block;
+            margin: 10px;
+            height: 30px;
+            width: 30px;
+        }
+        
+        #page-1,
+        nav a:nth-of-type(1) {
+            background-color: #0ddac8;
+        }
+        #page-2,
+        nav a:nth-of-type(2) {
+            background-color: #0eb6a8;
+        }
+        a {
+            text-decoration: none;
+            color: rgb(0, 0, 0);
+        }
+    </style>
+</head>
+<body>
+    <script src="https://cdn.freecodecamp.org/testable-projects-fcc/v1/bundle.js"></script>
+    
+    <nav>
+        <a href="#page-1"></a>
+        <a href="#page-2"></a>
+    </nav>
+    
+    <section id="page-1">
+        <h1 id="title">Doping in Professional Bicycle Racing</h1>
+        <h4 id="subtitle">35 Fastest times up Alpe d'Huez</h4>
+        <main></main> 
+    </section>
+    <section id="page-2"> 
+        Made by me. <br>
+        <a href="https://www.christoskipouros.com">www.christoskipouros.com</a>
+
+    </section>
+    
+</body>
+</html>
+
+<script>
+    
+    var url = 'https://raw.githubusercontent.com/FreeCodeCamp/ProjectReferenceData/master/cyclist-data.json';
+
+    d3.json(url).then(data => {
+        doStuff(data);
+    })
+
+    function doStuff(data){
+        
+        var urlData = data.map(function(d){
+            return {time: f1(d.Time),
+                    place: d.Place,//+d.Place
+                    seconds: d.Seconds,
+                    name: d.Name,
+                    year: Number(d.Year),
+                    nationality: d.Nationality,
+                    doping: d.Doping,
+                    url: d.URL}
+        });//urlData
+
+        function f1(d) {
+            var parsedTime = d.split(':');
+            var timeAsDate = new Date(1970, 0, 0, 0, parsedTime[0], parsedTime[1]);
+            return timeAsDate;
+        };
+
+        console.log(urlData)
+        
+        var w = 800, h = 500;
+        var m = {top: 20, left: 80, bottom: 50, right: 50}
+        
+        var innerH = h - m.top - m.bottom;
+        var innerW = w - m.right - m.left;
+
+        const parseTime = d3.timeParse("%M:%S");
+
+        var minYear = d3.min(urlData, function(d){
+            return d.year;
+        });
+        var maxYear = d3.max(urlData, function(d){
+            return d.year;
+        });
+        
+        console.log('minYear: ' + minYear + ' is a ' +  typeof minYear)
+        console.log('maxYear: ' + maxYear)
+        
+        //year
+        var xScale = d3.scaleLinear()
+                        .domain([minYear-1, maxYear+1])
+                        .range([0, innerW]);
+        //time
+        var yScale = d3.scaleLinear()
+                       .domain(d3.extent(urlData, function(d) {return d.time;}))//domain takes as arg a Date (that only differs at mm, ss)
+                       .range([0, innerH]);
+        
+        var xAxis = d3.axisBottom(xScale).tickFormat(d3.format('.4'));
+        var yAxis = d3.axisLeft(yScale).tickFormat(d3.timeFormat("%M:%S"));//for the axis, we extract mm:ss from Date objects
+
+        var svg = d3.select('main')
+                    .append('svg')
+                    .attr('width', w)
+                    .attr('height', h)
+                    .style('fill', '#0984e3')
+                    //css
+                    .style('background', '#dfe6e9')
+                    .style('border-radius', '2%')
+                    .style('padding-top', '20px')
+                    .style('border', '4px solid black')
+                    .style('box-shadow', '10px 10px 25px rgb(44, 57, 58)');
+
+        svg.append('g').selectAll('circle')
+                       .data(urlData)
+                       .enter()
+                       .append('circle')
+                       .attr('class', 'dot')
+                       .attr('data-name', function(d){return d.name})
+                       .attr('data-nationality', function(d){return d.nationality})
+                       .attr('data-xvalue', function(d){return d.year})
+                       .attr('data-yvalue', function(d){return d.time.toISOString();})
+                       .attr('transform', 'translate(0, 10)')//fix for top, also applied in the axis below
+                       .attr('r', 6)
+                       .attr('cx', function (d) {
+                            return m.left + xScale(d.year);
+                       })
+                       .attr('cy', function (d) {
+                            return yScale(d.time);
+                       })
+                       //.style('fill', (d) => { (d.doping === ' ') ? 'orange' : '#0984e3' })
+                       .style('fill', function(d){
+                           if (d.doping === ''){
+                               return 'orange'
+                           }else{
+                               return '#0984e3'
+                           }
+                       })
+                       .on("mouseover", function(d) {
+                            //d is the event object in this case, not the dataset
+                            //grab date, value by ref the attributes
+                            //Create the tooltip label
+                            svg.append("text")
+                            .attr("id", "tooltip")
+                            .attr("x", 50)
+                            .attr("y", 475)
+                            //.attr("text-anchor", "middle")
+                            //.attr("font-family", "Roboto Mono")
+                            .attr("font-size", "11px")
+                            .attr("font-weight", "bold")
+                            .attr("fill", "black")
+                            .attr('data-year', d3.select(this).attr('data-xvalue'))
+                            .text('NAME: ' + d3.select(this).attr('data-name')+ ', YEAR: ' + d3.select(this).attr('data-xvalue')+ ', NATIONALITY: ' + d3.select(this).attr('data-nationality'));
+                            
+                        })//on mouseover
+                        .on("mouseout", function() {
+                            //Remove the tooltip
+                            d3.select("#tooltip").remove();
+                        })//on mouseout     
+
+        svg.append('g')
+            .call(xAxis)
+            .attr('transform', 'translate('+m.left+', '+ (innerH+10) + ')').attr('id', 'x-axis');
+        svg.append('g')
+            .call(yAxis)
+            .attr('transform', 'translate('+m.left+', 10)')
+            .attr('id', 'y-axis');   
+            
+        svg.append('text')
+            .attr('transform', 'rotate(-90)')
+            .attr('x', -125)
+            .attr('y', 30)
+            .text('Time in minutes')
+            .attr("font-size", "11px");
+
+        svg.append('text')
+            .attr('x', 725)
+            .attr('y', 475)
+            .text('Year')
+            //.attr('class', 'info')
+            .attr("font-size", "11px");
+
+
+
+        var legendContainer = svg.append('g').attr('id', 'legend');
+        
+        legendContainer.append('rect')
+           .attr('width', 10)
+           .attr('height',10)
+           .attr('x', 550)
+           .attr('y', 0);
+
+        legendContainer.append('rect')
+           .attr('width', 10)
+           .attr('height',10)
+           .attr('x', 550)
+           .attr('y', 15)
+           .style('fill', 'orange');
+         
+        legendContainer.append('text')
+            .attr('x', 565)
+            .attr('y', 9)
+            .text('Riders with doping allegations')
+            .attr('font-size', "11px")
+            .style('fill', '#000000');
+        
+        legendContainer.append('text')
+            .attr('x', 565)
+            .attr('y', 24)
+            .text('No doping allegations')
+            .attr("font-size", "11px")
+            .style('fill', '#000000');
+
+        
+        
+        
+    }
+
+
+</script>
